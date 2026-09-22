@@ -105,7 +105,7 @@ if(PHYLTER2_BUILD_TESTS)
     add_test(NAME phylter2-r-reference COMMAND phylter2-regression-tests
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures)
     add_test(NAME phylter2-cli-check
-      COMMAND phylter check --trees ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/simple-tree.nwk)
+      COMMAND phylter --check --trees ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/simple-tree.nwk)
     add_test(NAME phylter2-cli-analysis COMMAND ${CMAKE_COMMAND}
       -DPHYLTER=$<TARGET_FILE:phylter>
       -DFIXTURES=${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures

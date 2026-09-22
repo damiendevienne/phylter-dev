@@ -19,9 +19,9 @@ constexpr std::string_view version = "0.1.0-dev";
 void help() {
   std::cout << R"(PhylteR: standalone phylogenomic outlier filtering
 Usage:
-  phylter run --trees FILE_OR_DIRECTORY --out PREFIX [options]
-  phylter run --matrices DIRECTORY --out PREFIX [options]
-  phylter check --trees FILE_OR_DIRECTORY [--distance nodal]
+  phylter --trees FILE_OR_DIRECTORY --out PREFIX [options]
+  phylter --matrices DIRECTORY --out PREFIX [options]
+  phylter --check --trees FILE_OR_DIRECTORY [options]
 
 Input: Newick file with one or more trees, or directory of Newick files.
 Matrices: tab-separated *.tsv files, first row/column are taxon names.
@@ -39,6 +39,7 @@ Options:
   --no-islands               Remove every flagged cell
   --initial-only             Compute the initial state only
   --diagnostics DIRECTORY    Write each accepted state's matrices (large)
+  --check                    Validate input and exit without analysis
   --force                    Overwrite existing output files
   --threads INTEGER          RV worker threads (default: 1)
   --rv-method matrix-free|dense  RV solver (default: matrix-free)
@@ -132,20 +133,22 @@ int main(int argc, char* argv[]) {
     if (argc == 1) { help(); return 0; }
     for (int i = 1; i < argc; ++i)
       if (std::string_view(argv[i]) == "--help" || std::string_view(argv[i]) == "-h") { help(); return 0; }
-    const std::string command = argv[1];
-    if (command == "--version") { std::cout << "phylter " << version << '\n'; return 0; }
-    if (command != "run" && command != "check") throw std::invalid_argument("unknown command: " + command);
+    if (argc == 2 && std::string_view(argv[1]) == "--version") {
+      std::cout << "phylter " << version << '\n';
+      return 0;
+    }
     AnalysisOptions options;
     fs::path input, prefix, diagnostics;
-    bool matrices = false, nodal = false, force = false, k2_set = false;
+    bool matrices = false, nodal = false, force = false, check = false, k2_set = false;
     double support_cutoff = 0;
     int threads = 1;
     std::unordered_set<std::string> seen;
-    for (int i = 2; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
       const std::string key = argv[i];
       if (!seen.insert(key).second) throw std::invalid_argument("repeated option: " + key);
       if (key == "--no-islands") { options.islands = false; continue; }
       if (key == "--initial-only") { options.initial_only = true; continue; }
+      if (key == "--check") { check = true; continue; }
       if (key == "--force") { force = true; continue; }
       if (i+1 == argc) throw std::invalid_argument("missing value for " + key);
       const std::string value = argv[++i];
@@ -192,27 +195,35 @@ int main(int argc, char* argv[]) {
     if (threads != 1) throw std::runtime_error("this build has no OpenMP support; use --threads 1");
     #endif
     if (input.empty()) throw std::invalid_argument("--trees or --matrices is required");
-    if (command == "run" && prefix.empty()) throw std::invalid_argument("--out is required");
+    if (!check && prefix.empty()) throw std::invalid_argument("--out is required unless --check is used");
     if (matrices && nodal) throw std::invalid_argument("--distance applies only to trees");
     std::vector<GeneMatrix> genes;
     for (const auto& path : input_files(input,matrices)) {
-      if (matrices) genes.push_back({path.stem().string(),read_matrix(path)});
-      else {
-        auto trees = parse_newick_set(read_file(path));
-        for (std::size_t t = 0; t < trees.size(); ++t) {
-          const auto name = path.stem().string() + (trees.size() > 1 ? ":" + std::to_string(t+1) : "");
-          genes.push_back({name,patristic_distances(trees[t],nodal,support_cutoff)});
+      try {
+        if (matrices) genes.push_back({path.stem().string(),read_matrix(path)});
+        else {
+          auto trees = parse_newick_set(read_file(path));
+          for (std::size_t t = 0; t < trees.size(); ++t) {
+            const auto name = path.stem().string() + (trees.size() > 1 ? ":" + std::to_string(t+1) : "");
+            genes.push_back({name,patristic_distances(trees[t],nodal,support_cutoff)});
+          }
         }
+      } catch (const std::exception& error) {
+        throw std::runtime_error(path.string() + ": " + error.what());
       }
     }
     std::unordered_set<std::string> ids;
     for (const auto& gene : genes) {
       label_check(gene.gene);
-      validate_gene_input(gene);
+      try {
+        validate_gene_input(gene);
+      } catch (const std::exception& error) {
+        throw std::runtime_error("gene '" + gene.gene + "': " + error.what());
+      }
       if (!ids.insert(gene.gene).second) throw std::invalid_argument("duplicate gene identifier");
       for (const auto& taxon : gene.distances.taxa) label_check(taxon);
     }
-    if (command == "check") { std::cout << "Valid input: " << genes.size() << " genes\n"; return 0; }
+    if (check) { std::cout << "Valid input: " << genes.size() << " genes\n"; return 0; }
     for (const std::string suffix : {".outliers.tsv",".discarded.tsv",".scores.tsv",".summary.txt"})
       if (!force && fs::exists(prefix.string()+suffix)) throw std::runtime_error("output exists (use --force): " + prefix.string()+suffix);
     if (!prefix.parent_path().empty()) fs::create_directories(prefix.parent_path());

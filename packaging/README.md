@@ -20,7 +20,7 @@ Keep the extracted bin/ and lib/ directories together. Run bin/phylter directly.
 The test data are included in share/phylter/examples/carnivora.nwk:
 
 ```sh
-bin/phylter run --trees share/phylter/examples/carnivora.nwk --out results/carnivora
+bin/phylter --trees share/phylter/examples/carnivora.nwk --out results/carnivora
 ```
 
 The archive includes numerical/compiler runtimes, but uses the host's glibc;

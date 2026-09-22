@@ -83,7 +83,7 @@ required. A successful run ends with:
 You can also ask PhylteR to validate an input without performing the analysis:
 
 ```sh
-./build/phylter check --trees tests/fixtures/carnivora.nwk
+./build/phylter --check --trees tests/fixtures/carnivora.nwk
 ```
 
 ## Run the included example
@@ -91,7 +91,7 @@ You can also ask PhylteR to validate an input without performing the analysis:
 The repository includes a real Carnivora dataset:
 
 ```sh
-./build/phylter run \
+./build/phylter \
   --trees tests/fixtures/carnivora.nwk \
   --out build/carnivora
 ```
@@ -111,7 +111,7 @@ iterations, with a final quality of approximately `0.944259987303`.
 Pass either one Newick file or a directory containing Newick files:
 
 ```sh
-phylter run --trees gene_trees/ --out results/analysis --threads 4
+phylter --trees gene_trees/ --out results/analysis --threads 4
 ```
 
 The output prefix can include a directory; PhylteR creates it when necessary.
@@ -126,7 +126,7 @@ non-negative branch lengths. For trees without branch lengths, use nodal
 distances:
 
 ```sh
-phylter run \
+phylter \
   --trees gene_trees/ \
   --distance nodal \
   --out results/nodal-analysis
@@ -144,7 +144,7 @@ Identifiers cannot contain tabs or newlines.
 Before a long run, validate the entire input:
 
 ```sh
-phylter check --trees gene_trees/
+phylter --check --trees gene_trees/
 ```
 
 ## Use precomputed distance matrices
@@ -153,7 +153,7 @@ Instead of trees, PhylteR can read a directory containing one square TSV
 distance matrix per gene:
 
 ```sh
-phylter run --matrices distance_matrices/ --out results/analysis
+phylter --matrices distance_matrices/ --out results/analysis
 ```
 
 Each `.tsv` file must have `taxon` in the first header cell, followed by the
