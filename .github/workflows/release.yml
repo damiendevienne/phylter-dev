@@ -97,6 +97,7 @@ jobs:
 
           # Keep Windows itself available, but deliberately hide Conda and the
           # build environment. DLLs needed here must be present in the bundle.
+          Get-ChildItem (Split-Path $executable) | Select-Object Name, Length
           $env:PATH = "$env:WINDIR\System32;$env:WINDIR"
           & $executable --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
