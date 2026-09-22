@@ -89,14 +89,19 @@ jobs:
 
       - name: Test installed bundle (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          executable="$PWD/package/$BUNDLE/bin/phylter.exe"
-          tree="$PWD/package/$BUNDLE/share/phylter/examples/carnivora.nwk"
-          clean_path="$(cygpath -u "$WINDIR/System32"):$(cygpath -u "$WINDIR")"
-          env -i PATH="$clean_path" SYSTEMROOT="$SYSTEMROOT" WINDIR="$WINDIR" \
-            "$executable" --version
-          env -i PATH="$clean_path" SYSTEMROOT="$SYSTEMROOT" WINDIR="$WINDIR" \
-            "$executable" --trees "$tree" --out "$RUNNER_TEMP/phylter-smoke/carnivora"
+          $executable = Join-Path $PWD "package/$env:BUNDLE/bin/phylter.exe"
+          $tree = Join-Path $PWD "package/$env:BUNDLE/share/phylter/examples/carnivora.nwk"
+          $output = Join-Path $env:RUNNER_TEMP "phylter-smoke/carnivora"
+
+          # Keep Windows itself available, but deliberately hide Conda and the
+          # build environment. DLLs needed here must be present in the bundle.
+          $env:PATH = "$env:WINDIR\System32;$env:WINDIR"
+          & $executable --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $executable --trees $tree --out $output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Create archive and checksum
         run: |
