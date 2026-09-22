@@ -14,6 +14,17 @@ struct AnalysisOptions {
 };
 using Cell = std::pair<std::size_t, std::size_t>; // gene, species
 using StateObserver = std::function<void(std::size_t, const DistatisResult&, const Matrix&)>;
+enum class OutlierMode { cells, whole_genes };
+struct ProgressEvent {
+  OutlierMode mode{OutlierMode::cells};
+  std::size_t new_cells{};
+  std::size_t new_genes{};
+  double previous_quality{};
+  double candidate_quality{};
+  bool has_candidate{false};
+  bool accepted{false};
+};
+using ProgressObserver = std::function<void(const ProgressEvent&)>;
 struct AnalysisResult {
   std::vector<std::string> genes, taxa, discarded_genes;
   std::vector<std::pair<std::string,std::string>> outliers, discarded;
@@ -26,5 +37,6 @@ struct AnalysisResult {
   Matrix wr;
 };
 AnalysisResult analyze(std::vector<GeneMatrix> input, const AnalysisOptions& options = {},
-                       const StateObserver& observer = {});
+                       const StateObserver& observer = {},
+                       const ProgressObserver& progress = {});
 }

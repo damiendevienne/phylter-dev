@@ -1,9 +1,9 @@
-# PhylteR — standalone command-line application
+# Phylter — standalone command-line application
 
-PhylteR finds gene/species pairs whose evolutionary signal is unusually
-different from the rest of a phylogenomic dataset. This repository contains a
-native C++ command-line version of PhylteR. It does not require R, Python, or
-CRAN packages to run.
+Phylter finds gene/species pairs whose evolutionary signal is unusually
+different from the rest of a phylogenomic dataset. It is a native C++
+command-line successor to the original PhylteR R package and does not require
+R, Python, or CRAN packages to run.
 
 > **Project status:** the application can be built, installed, and tested from
 > source. Automated builds exercise Linux, macOS, and Windows. There is not yet
@@ -80,11 +80,18 @@ required. A successful run ends with:
 100% tests passed, 0 tests failed out of 5
 ```
 
-You can also ask PhylteR to validate an input without performing the analysis:
+You can inspect a tree dataset without choosing analysis parameters:
 
 ```sh
 ./build/phylter --check --trees tests/fixtures/carnivora.nwk
 ```
+
+This verifies the Newick structure, labels, and supplied branch lengths. It
+also reports whether patristic distances and support-based branch collapsing
+are available, and shows the gene identifiers derived from the filenames.
+
+`--check` accepts only `--trees`; it does not predict whether a particular set
+of optimization parameters will produce outliers.
 
 ## Run the included example
 
@@ -96,7 +103,13 @@ The repository includes a real Carnivora dataset:
   --out build/carnivora
 ```
 
-PhylteR prints the quality score of each accepted state and creates:
+During the run, Phylter reports the dataset dimensions and taxon coverage,
+branch-length and node-support availability, active settings, and every cell or
+complete-gene proposal with its score change and acceptance decision. The final
+summary reports quality gain, filtered-data proportion, complete outliers,
+elapsed time, peak memory, and the exact paths of the four result files. Before
+optimization, a rough upper memory estimate is compared with currently
+available RAM and a warning is shown for potentially unsafe runs:
 
 - `build/carnivora.outliers.tsv` — outlier gene/species pairs, in removal order
 - `build/carnivora.discarded.tsv` — pairs excluded by the normalization cutoff
@@ -114,14 +127,14 @@ Pass either one Newick file or a directory containing Newick files:
 phylter --trees gene_trees/ --out results/analysis --threads 4
 ```
 
-The output prefix can include a directory; PhylteR creates it when necessary.
+The output prefix can include a directory; Phylter creates it when necessary.
 It will not overwrite existing result files unless you add `--force`.
 
 Supported filename extensions are `.nwk`, `.newick`, `.tre`, `.tree`,
 and `.treefile` (case-insensitive). A file may contain one or several trees.
 When a directory is supplied, files are read in lexicographic filename order.
 
-By default, PhylteR uses patristic distances, which require finite,
+By default, Phylter uses patristic distances, which require finite,
 non-negative branch lengths. For trees without branch lengths, use nodal
 distances:
 
@@ -141,7 +154,7 @@ Gene identifiers come from filenames. A file named `gene42.nwk` produces
 `gene42:2`, and so on. Taxon labels, including underscores, are preserved.
 Identifiers cannot contain tabs or newlines.
 
-Before a long run, validate the entire input:
+To inspect tree structure and see which analyses the dataset supports:
 
 ```sh
 phylter --check --trees gene_trees/
@@ -149,7 +162,7 @@ phylter --check --trees gene_trees/
 
 ## Use precomputed distance matrices
 
-Instead of trees, PhylteR can read a directory containing one square TSV
+Instead of trees, Phylter can read a directory containing one square TSV
 distance matrix per gene:
 
 ```sh
@@ -168,7 +181,7 @@ B	0.5	0	0.4
 C	0.8	0.4	0
 ```
 
-Matrices may contain different sets of taxa; PhylteR imputes missing values
+Matrices may contain different sets of taxa; Phylter imputes missing values
 before the DISTATIS analysis.
 
 ## Common options
@@ -185,7 +198,7 @@ Run `phylter --help` for the complete list.
 | `--force` | Overwrite existing result files |
 | `--diagnostics DIR` | Save each state's matrices; uses substantial disk space |
 
-Result files report outliers; PhylteR does not modify or prune the original
+Result files report outliers; Phylter does not modify or prune the original
 trees or alignments.
 
 ## Troubleshooting

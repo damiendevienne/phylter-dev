@@ -6,6 +6,8 @@ option(PHYLTER2_BUILD_TESTS "Build the C++ test suite" ON)
 option(PHYLTER2_OPENMP "Enable controlled parallel RV computation" ON)
 option(PHYLTER2_BUNDLE_RUNTIME "Bundle Linux numerical and compiler runtime libraries" OFF)
 
+find_package(Threads REQUIRED)
+
 set(PHYLTER2_BLAS_LIBRARY "" CACHE FILEPATH "Explicit BLAS library (for toolchains where FindBLAS fails)")
 set(PHYLTER2_LAPACK_LIBRARY "" CACHE FILEPATH "Explicit LAPACK library (for toolchains where FindLAPACK fails)")
 set(PHYLTER2_NUMERICAL_LIBRARIES)
@@ -71,7 +73,10 @@ else()
 endif()
 
 add_executable(phylter src/main.cpp)
-target_link_libraries(phylter PRIVATE phylter2_core)
+target_link_libraries(phylter PRIVATE phylter2_core Threads::Threads)
+if(WIN32)
+  target_link_libraries(phylter PRIVATE psapi)
+endif()
 target_compile_features(phylter PRIVATE cxx_std_20)
 
 include(GNUInstallDirs)

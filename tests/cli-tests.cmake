@@ -4,8 +4,27 @@ endif()
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
 execute_process(COMMAND "${PHYLTER}" --check --trees "${FIXTURES}/carnivora.nwk"
   RESULT_VARIABLE status OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
-if(NOT status EQUAL 0 OR NOT stdout MATCHES "Valid input: 125 genes")
+if(NOT status EQUAL 0 OR NOT stdout MATCHES "Genes:[ ]+125" OR
+   NOT stdout MATCHES "Phylter 0.1.0-dev" OR
+   NOT stdout MATCHES "Tips per gene:" OR
+   NOT stdout MATCHES "Patristic distance:[ ]+available" OR
+   NOT stdout MATCHES "carnivora:1, carnivora:2" OR
+   NOT stdout MATCHES "tree dataset is well formed")
   message(FATAL_ERROR "Input check failed: ${stdout}${stderr}")
+endif()
+execute_process(COMMAND "${PHYLTER}" --check --trees "${FIXTURES}/carnivora.nwk" --distance nodal
+  RESULT_VARIABLE status OUTPUT_QUIET ERROR_VARIABLE stderr)
+if(status EQUAL 0 OR NOT stderr MATCHES "--check only accepts --trees")
+  message(FATAL_ERROR "Input check accepted an analysis option: ${stderr}")
+endif()
+set(branchless_tree "${OUTPUT_DIR}/branchless-input.nwk")
+file(WRITE "${branchless_tree}" "((A,B),C);\n")
+execute_process(COMMAND "${PHYLTER}" --check --trees "${branchless_tree}"
+  RESULT_VARIABLE status OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
+if(NOT status EQUAL 0 OR NOT stdout MATCHES "Patristic distance: unavailable" OR
+   NOT stdout MATCHES "Nodal distance:[ ]+available" OR
+   NOT stdout MATCHES "branchless-input")
+  message(FATAL_ERROR "Branchless-tree capabilities are incorrect: ${stdout}${stderr}")
 endif()
 execute_process(COMMAND "${PHYLTER}" run --trees "${FIXTURES}/carnivora.nwk"
   --out "${OUTPUT_DIR}/obsolete-command"
@@ -25,6 +44,18 @@ execute_process(COMMAND "${PHYLTER}" --trees "${FIXTURES}/carnivora.nwk"
   RESULT_VARIABLE status OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
 if(NOT status EQUAL 0)
   message(FATAL_ERROR "CLI analysis failed: ${stderr}")
+endif()
+foreach(section "Dataset" "run phylter --help for all options"
+                "Distance scaling:" "Acceptance rule:" "Estimated memory:" "Optimization"
+                "candidate cell outlier"
+                "Results" "Elapsed time:" "Peak memory:" "Output files"
+                "Note: rerun with --diagnostics DIR")
+  if(NOT stdout MATCHES "${section}")
+    message(FATAL_ERROR "CLI output is missing section '${section}': ${stdout}")
+  endif()
+endforeach()
+if(NOT stdout MATCHES "Data loss:[ ]+1.42% \\(94/6625 outlier cells removed\\)")
+  message(FATAL_ERROR "CLI result summary is incomplete: ${stdout}")
 endif()
 file(READ "${OUTPUT_DIR}/serial.outliers.tsv" actual)
 file(READ "${FIXTURES}/carnivora.outliers.tsv" expected)

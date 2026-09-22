@@ -69,7 +69,7 @@ void compact(DistatisResult& state) {
 }
 }
 AnalysisResult analyze(std::vector<GeneMatrix> input, const AnalysisOptions& options,
-                       const StateObserver& observer) {
+                       const StateObserver& observer, const ProgressObserver& progress) {
   for (double value : {options.k, options.k2, options.stop})
     if (!std::isfinite(value) || value < 0) throw std::invalid_argument("k, k2 and stop must be finite and non-negative");
   std::unordered_map<std::string,std::vector<std::string>> original;
@@ -98,6 +98,8 @@ AnalysisResult analyze(std::vector<GeneMatrix> input, const AnalysisOptions& opt
     std::vector<Cell> new_cells;
     for (auto cell : detected) if (!known[cell.first*n+cell.second]) new_cells.push_back(cell);
     if (new_cells.empty()) {
+      if (progress) progress({.mode = whole_genes ? OutlierMode::whole_genes : OutlierMode::cells,
+                              .previous_quality = state.quality});
       if (whole_genes) break;
       whole_genes = true;
       continue;
@@ -113,7 +115,21 @@ AnalysisResult analyze(std::vector<GeneMatrix> input, const AnalysisOptions& opt
     // Preserve R's subtraction test exactly at the acceptance boundary.
     auto candidate = distatis(proposal, 0, state.quality + options.stop -
       4*std::numeric_limits<double>::epsilon(),options.rv);
-    if (candidate.quality - state.quality < options.stop) {
+    const bool accepted = candidate.quality - state.quality >= options.stop;
+    std::unordered_set<std::size_t> proposed_genes;
+    if (whole_genes)
+      for (const auto [gene, species] : new_cells) {
+        (void)species;
+        proposed_genes.insert(gene);
+      }
+    if (progress) progress({.mode = whole_genes ? OutlierMode::whole_genes : OutlierMode::cells,
+                            .new_cells = new_cells.size(),
+                            .new_genes = proposed_genes.size(),
+                            .previous_quality = state.quality,
+                            .candidate_quality = candidate.quality,
+                            .has_candidate = true,
+                            .accepted = accepted});
+    if (!accepted) {
       if (whole_genes) break;
       whole_genes = true;
       continue;
