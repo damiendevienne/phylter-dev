@@ -1,21 +1,94 @@
-# PhylteR 2 — native C++ CLI
+# PhylteR — standalone command-line application
 
-The complete filtering loop now runs as a native executable, with no R, Python
-or CRAN packages at runtime. This is a development version of the standalone
-port. The numerical reference remains the original PhylteR R package.
+PhylteR finds gene/species pairs whose evolutionary signal is unusually
+different from the rest of a phylogenomic dataset. This repository contains a
+native C++ command-line version of PhylteR. It does not require R, Python, or
+CRAN packages to run.
 
-## Try the included dataset
+> **Project status:** the application can be built, installed, and tested from
+> source. Automated builds exercise Linux, macOS, and Windows. There is not yet
+> a downloadable release or a published Bioconda package, so installation
+> currently requires a C++ build environment. This is a development version;
+> the original PhylteR R package remains the numerical reference.
 
-From this standalone project's directory:
+## What you need
+
+- CMake 3.21 or newer
+- a compiler with C++20 support (GCC, Clang, or recent MSVC)
+- BLAS and LAPACK development libraries
+- Git, if you clone the repository
+
+On Ubuntu or Debian:
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-./build/phylter run --trees tests/fixtures/carnivora.nwk --out build/carnivora
+sudo apt update
+sudo apt install build-essential cmake libblas-dev liblapack-dev
 ```
 
-From the **parent R repository**, use:
+On macOS with Homebrew:
+
+```sh
+brew install cmake openblas lapack
+```
+
+Windows builds are supported through CMake, but dependency setup varies. The
+automated Windows build uses Conda; see
+[the build workflow](.github/workflows/native.yml) for the exact dependencies.
+
+## Build and install
+
+Clone the repository and build an optimized executable:
+
+```sh
+git clone https://github.com/damiendevienne/phylter-dev.git
+cd phylter-dev
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+The executable is now `build/phylter` on Linux and macOS.
+Multi-configuration generators, including the usual Visual Studio setup, may
+place it in `build/Release/` instead.
+
+You can run it directly from the build directory, or install it under a local
+prefix:
+
+```sh
+cmake --install build --prefix "$PWD/install" --component Runtime
+export PATH="$PWD/install/bin:$PATH"
+phylter --version
+```
+
+The `export` command affects only the current shell. Add the resulting `bin`
+directory to your usual `PATH` configuration if you want a permanent install.
+The installed executable uses the BLAS/LAPACK libraries available on the
+system.
+
+## Check the installation
+
+Run the complete test suite from the repository root:
+
+```sh
+ctest --test-dir build --output-on-failure
+```
+
+There are five tests covering the core algorithms, frozen R reference results,
+input validation, command-line output, and parallel reproducibility. R is not
+required. A successful run ends with:
+
+```text
+100% tests passed, 0 tests failed out of 5
+```
+
+You can also ask PhylteR to validate an input without performing the analysis:
+
+```sh
+./build/phylter check --trees tests/fixtures/carnivora.nwk
+```
+
+## Run the included example
+
+The repository includes a real Carnivora dataset:
 
 ```sh
 ./build/phylter run \
@@ -23,136 +96,137 @@ From the **parent R repository**, use:
   --out build/carnivora
 ```
 
-Expected default result: **94 outlier gene/species pairs**, 10 accepted
-iterations (11 states), final quality **0.944259987303**.
+PhylteR prints the quality score of each accepted state and creates:
 
-Install locally and put the executable on your PATH:
+- `build/carnivora.outliers.tsv` — outlier gene/species pairs, in removal order
+- `build/carnivora.discarded.tsv` — pairs excluded by the normalization cutoff
+- `build/carnivora.scores.tsv` — quality score for every accepted state
+- `build/carnivora.summary.txt` — result counts and the parameters used
+
+The default analysis finds 94 outlier gene/species pairs in 10 accepted
+iterations, with a final quality of approximately `0.944259987303`.
+
+## Analyze your own trees
+
+Pass either one Newick file or a directory containing Newick files:
 
 ```sh
-cmake --install build --prefix "$PWD/install" --component Runtime
-export PATH="$PWD/install/bin:$PATH"
 phylter run --trees gene_trees/ --out results/analysis --threads 4
 ```
 
-Building requires CMake >=3.21, a C++20 compiler and LP64 BLAS/LAPACK development
-libraries. A prebuilt Linux bundle includes numerical libraries: extract it,
-keep bin/ and lib/ together, and run bin/phylter.
-See [packaging/README.md](packaging/README.md). No package is published on
-Bioconda yet; macOS/Windows executables have not yet been validated.
+The output prefix can include a directory; PhylteR creates it when necessary.
+It will not overwrite existing result files unless you add `--force`.
 
-## Input and output
+Supported filename extensions are `.nwk`, `.newick`, `.tre`, `.tree`,
+and `.treefile` (case-insensitive). A file may contain one or several trees.
+When a directory is supplied, files are read in lexicographic filename order.
 
-Use `phylter --help` for all options. A Newick file may contain several trees;
-directories are read in lexicographic filename order. Supported extensions
-(case insensitive): .nwk, .newick, .tre, .tree, .treefile.
-Quoted labels, bracket comments and multifurcations are accepted.
-Patristic distances require nonnegative finite branch lengths. Nodal distances
-also accept trees without branch lengths.
-
-Gene identifiers are the filename stem for one tree per file, or
-`stem:1`, `stem:2`, etc. for multiple trees. Taxon identifiers are preserved,
-including underscores. Identifiers cannot contain tabs or newlines.
-This naming convention differs from the older R CLI's numeric IDs for a
-multi-tree file; biological results are compared using an explicit gene mapping.
-
-You may provide matrices using `--matrices DIRECTORY`: one square matrix per
-.tsv file, first header cell `taxon`, then column taxon names, and each data row
-starting with the corresponding row name. Row/column orders must match.
-Distances must be finite, symmetric, nonnegative, with zero diagonals.
-Genes may contain different taxa: imputation makes their dimensions and taxon
-order identical **before** DISTATIS. At least two retained genes and three taxa
-per input gene are required.
-
-Compact results:
-
-* `PREFIX.outliers.tsv`: gene/species pairs in removal order.
-* `PREFIX.discarded.tsv`: pairs discarded by the normalization cutoff.
-* `PREFIX.scores.tsv`: quality at every accepted state.
-* `PREFIX.summary.txt`: counts, complete outliers and analysis parameters.
-
-These are outlier reports; the CLI does not prune original trees or alignments.
-Files are protected against overwriting unless `--force` is supplied.
-`--diagnostics DIRECTORY` additionally writes WR, RV, compromise, weights and
-coordinate Gram matrices at every accepted state. This can consume substantial
-disk space. The diagnostics directory must be empty.
-
-## Numerical compatibility
-
-The port preserves distance normalization, double centering of **unsquared**
-distances, RV weighting, largest-magnitude eigenvalue selection, broken-stick
-axis selection, WR normalization, adjusted Tukey/medcouple thresholds,
-complete-link clustering and its tie order, island maxima, the whole-gene pass,
-and acceptance/rejection of proposed removals.
-
-Two legacy behaviors are preserved deliberately:
-
-* Never-co-occurring taxa use R's existing neighbor fallback. The original
-  `mean(a,b)` expression returns scalar `a` because `b` is the trim argument;
-  the resulting imputed matrices can be asymmetric. Disconnected pairs with no
-  suitable shared neighbor fail explicitly. A revised symmetric estimator needs
-  a separately validated method/version.
-* `--support-cutoff` reproduces the existing R rule: low-support **parent**
-  nodes modify outgoing edges, then short internal edges collapse. This is not
-  a new interpretation of bootstrap filtering.
-
-Numerical equality is tolerance-based; LAPACK and RSpectra need not return
-identical floating-point bits or eigenvector signs. Near a threshold, or across
-a tied eigenvalue cutoff, platform-dependent numerical differences remain
-possible. The default regression compares exact outlier IDs/order and scores,
-WR, RV, weights, compromise and coordinate geometry.
-
-## Validation
-
-`ctest` uses frozen fixtures exported from the unchanged R reference revision
-`4d74241169be3882da9d5f08da47bd40604764eb`. **R is not needed for these tests.**
-It also checks medcouple samples, clustering ties, invalid inputs, matrix size
-overflow, Newick parsing, CLI output and serial/parallel reproducibility.
-
-Developers with the original R package installed can rerun the larger comparison:
+By default, PhylteR uses patristic distances, which require finite,
+non-negative branch lengths. For trees without branch lengths, use nodal
+distances:
 
 ```sh
-# From the parent R repository; all temporary files remain in that repository.
-TMPDIR="$PWD/.audit/tmp" \
-R_LIBS="$PWD/.audit/reference-lib:$PWD/.audit/library" \
-TZ=Europe/Athens Rscript tests/compare-reference.R \
-  build/phylter build/new-reference-validation
+phylter run \
+  --trees gene_trees/ \
+  --distance nodal \
+  --out results/nodal-analysis
 ```
 
-Use a fresh output directory. This compares **every accepted state** in 18
-configurations, including missing taxa, never-co-occurring taxa, negative
-spectra, support filtering, rejected proposals and no-outlier cases.
-See [VALIDATION.md](VALIDATION.md), the
-[matrix-free solver benchmark](BENCHMARK-MATRIX-FREE.md), and the
-[real Carnivora speed/RAM comparison and laptop estimate](BENCHMARK-REAL-CARNIVORA.md).
-The [genes × tips benchmark](BENCHMARK-TIP-SCALING.md) expands the input trees
-to 106/212 taxa and measures both dimensions, with reproducible synthetic inputs.
-The default RV solver is now [matrix-free](RV.md); `--rv-method dense` retains
-the previous solver for comparison. Diagnostic output still requests a full RV
-matrix and therefore has a higher memory/time cost than a normal run.
+Quoted labels, bracket comments, multifurcations, and datasets in which genes
+contain different sets of taxa are supported. Each input gene must contain at
+least three taxa, and at least two genes must remain after filtering.
 
-## Performance and next stages
+Gene identifiers come from filenames. A file named `gene42.nwk` produces
+`gene42`. If it contains several trees, their identifiers are `gene42:1`,
+`gene42:2`, and so on. Taxon labels, including underscores, are preserved.
+Identifiers cannot contain tabs or newlines.
 
-Already implemented:
+Before a long run, validate the entire input:
 
-* contiguous matrix storage and BLAS matrix products;
-* no projections/eigendecomposition of the compromise for rejected candidates;
-* compact default state retention (no history of large matrices in memory);
-* one-gene-at-a-time expansion during imputation;
-* deterministic OpenMP parallelism over independent entries of RV products
-  (or RV pairs with the dense backend);
-* the leading RV eigenpair from an implicit operator, with no full RV allocation
-  or eigendecomposition in the default CLI path.
+```sh
+phylter check --trees gene_trees/
+```
 
-`--threads` controls the RV workers (default 1). BLAS calls occur outside the
-OpenMP region, avoiding nested parallelism. A threaded BLAS has its own thread
-setting; use `OPENBLAS_NUM_THREADS` or `MKL_NUM_THREADS` to match the intended
-budget. The tested Linux build uses the sequential reference BLAS.
+## Use precomputed distance matrices
 
-The port still stores dense distance/centered matrices. Packed symmetric
-storage and an explicit approximate `fast` mode are **not implemented yet**. They are the next
-separately benchmarked stages, using this port and R as references. The
-[real-data benchmark](BENCHMARK-REAL-CARNIVORA.md) measures up to 3,000 genes
-and estimates full-data memory at 53 taxa; larger taxon counts need separate tests.
+Instead of trees, PhylteR can read a directory containing one square TSV
+distance matrix per gene:
 
-ERABLE-based alternatives, incremental updates and GPU computation remain
-outside this stage. Plots are intentionally absent.
+```sh
+phylter run --matrices distance_matrices/ --out results/analysis
+```
+
+Each `.tsv` file must have `taxon` in the first header cell, followed by the
+taxon names. Every data row starts with its corresponding taxon name. Row and
+column order must match. Values must be finite, symmetric, and non-negative,
+with zeros on the diagonal.
+
+```text
+taxon	A	B	C
+A	0	0.5	0.8
+B	0.5	0	0.4
+C	0.8	0.4	0
+```
+
+Matrices may contain different sets of taxa; PhylteR imputes missing values
+before the DISTATIS analysis.
+
+## Common options
+
+Run `phylter --help` for the complete list.
+
+| Option | Purpose |
+| --- | --- |
+| `--threads N` | Use `N` workers for RV computations (default: 1) |
+| `--distance patristic\|nodal` | Select the distance calculated from trees |
+| `--norm median\|mean\|none` | Select distance normalization |
+| `--support-cutoff N` | Apply R-compatible node-support filtering |
+| `--initial-only` | Calculate only the initial state |
+| `--force` | Overwrite existing result files |
+| `--diagnostics DIR` | Save each state's matrices; uses substantial disk space |
+
+Result files report outliers; PhylteR does not modify or prune the original
+trees or alignments.
+
+## Troubleshooting
+
+**CMake cannot find BLAS or LAPACK.** Install their development packages, not
+only the runtime libraries. On Debian/Ubuntu these are `libblas-dev` and
+`liblapack-dev`.
+
+**An output file already exists.** Choose another `--out` prefix, remove the
+old results, or use `--force` if overwriting is intentional.
+
+**`--threads` reports that OpenMP is unavailable.** Use `--threads 1`, or
+configure again with an OpenMP-capable toolchain. A threaded BLAS may create its
+own workers; use `OPENBLAS_NUM_THREADS` or `MKL_NUM_THREADS` to control the
+total thread count.
+
+**You moved the source directory after configuring CMake.** Delete the build
+directory and rerun the configure and build commands. CMake build directories
+are not portable between source locations.
+
+## Packaging and validation details
+
+A self-contained Linux development archive can be produced locally, and a
+development Conda recipe is included. Neither is currently a published release.
+See [packaging/README.md](packaging/README.md).
+
+The regression fixtures were exported from R reference revision
+`4d74241169be3882da9d5f08da47bd40604764eb`. The port preserves the reference
+algorithm's normalization, DISTATIS weighting, eigenvalue selection, outlier
+thresholds, clustering, and proposal acceptance behavior. Comparisons are
+tolerance-based because LAPACK implementations can differ slightly.
+
+Developers can find the full numerical methodology in
+[VALIDATION.md](VALIDATION.md). Performance and implementation notes are in:
+
+- [RV solver design](RV.md)
+- [matrix-free solver benchmark](BENCHMARK-MATRIX-FREE.md)
+- [real Carnivora performance and memory benchmark](BENCHMARK-REAL-CARNIVORA.md)
+- [gene and taxon scaling benchmark](BENCHMARK-TIP-SCALING.md)
+
+The application still stores dense distance and centered matrices. Packed
+symmetric storage and an approximate fast mode are not implemented. Diagnostic
+output additionally materializes the full RV matrix, so it uses more memory
+than a normal run.
