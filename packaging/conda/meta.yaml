@@ -1,0 +1,29 @@
+{% set version = "0.1.0" %}
+package:
+  name: phylter2
+  version: {{ version }}
+source:
+  path: {{ environ.get("PHYLTER2_SOURCE_DIR", "../..") }}
+build:
+  number: 0
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - cmake >=3.21
+    - ninja
+  host:
+    - libblas
+    - liblapack
+  run:
+    - libblas
+    - liblapack
+test:
+  commands:
+    - phylter --version
+    - phylter --help
+about:
+  license: GPL-2.0-or-later
+  license_file: LICENSE
+  summary: Standalone C++ phylogenomic outlier filtering
+# Local development recipe. Before a Bioconda submission, replace source.path
+# with the dedicated repository's immutable release URL and SHA256.

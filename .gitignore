@@ -1,0 +1,9 @@
+/build/
+/build-*/
+/install/
+/validation/
+/validation-data/
+
+/.aider*
+/.agents/
+/.codex/

@@ -1,0 +1,19 @@
+PhylteR 2 is distributed under GPL-2.0-or-later, as is the original PhylteR
+package. See LICENSE.
+
+Scientific method and R reference: PhylteR by Damien M. de Vienne and
+contributors (see the parent package DESCRIPTION and scientific references).
+The Carnivora test data are redistributed from that package for regression
+testing; tests/fixtures/PROVENANCE.txt records their origin.
+
+src/medcouple.cpp adapts the code imported into PhylteR from mrfDepth in
+July 2023: P. Segaert, with original code by M. Maechler and G. Brys.
+Unneeded Eigen declarations were removed and work buffers use RAII.
+
+The complete-link clustering implementation follows the tie and ordering
+semantics of R's stats/src/hclust.f, by F. Murtagh and R contributors.
+https://github.com/wch/r-source/blob/trunk/src/library/stats/src/hclust.f
+
+BLAS/LAPACK and compiler runtime libraries retain their respective licenses.
+For a redistributed binary bundle, include the corresponding license notices
+and fulfill source-availability obligations for bundled libraries.
