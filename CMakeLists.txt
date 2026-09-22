@@ -6,8 +6,26 @@ option(PHYLTER2_BUILD_TESTS "Build the C++ test suite" ON)
 option(PHYLTER2_OPENMP "Enable controlled parallel RV computation" ON)
 option(PHYLTER2_BUNDLE_RUNTIME "Bundle Linux numerical and compiler runtime libraries" OFF)
 
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
+set(PHYLTER2_NUMERICAL_LIBRARIES)
+if(WIN32 AND DEFINED ENV{CONDA_PREFIX})
+  # Conda-forge puts its MSVC import libraries below Library/lib. CMake's
+  # FindBLAS does not reliably search that layout on Windows, even when the
+  # environment prefix is present in CMAKE_PREFIX_PATH.
+  find_library(PHYLTER2_CONDA_BLAS NAMES blas
+    PATHS "$ENV{CONDA_PREFIX}/Library/lib" NO_DEFAULT_PATH)
+  find_library(PHYLTER2_CONDA_LAPACK NAMES lapack
+    PATHS "$ENV{CONDA_PREFIX}/Library/lib" NO_DEFAULT_PATH)
+  if(PHYLTER2_CONDA_BLAS AND PHYLTER2_CONDA_LAPACK)
+    message(STATUS "Using BLAS/LAPACK from Conda: $ENV{CONDA_PREFIX}")
+    list(APPEND PHYLTER2_NUMERICAL_LIBRARIES
+      "${PHYLTER2_CONDA_LAPACK}" "${PHYLTER2_CONDA_BLAS}")
+  endif()
+endif()
+if(NOT PHYLTER2_NUMERICAL_LIBRARIES)
+  find_package(BLAS REQUIRED)
+  find_package(LAPACK REQUIRED)
+  list(APPEND PHYLTER2_NUMERICAL_LIBRARIES LAPACK::LAPACK BLAS::BLAS)
+endif()
 
 add_library(phylter2_core
   src/matrix.cpp
@@ -28,7 +46,7 @@ target_include_directories(phylter2_core
     $<INSTALL_INTERFACE:include>
 )
 target_compile_features(phylter2_core PUBLIC cxx_std_20)
-target_link_libraries(phylter2_core PUBLIC LAPACK::LAPACK BLAS::BLAS)
+target_link_libraries(phylter2_core PUBLIC ${PHYLTER2_NUMERICAL_LIBRARIES})
 set(PHYLTER2_HAVE_OPENMP OFF)
 if(PHYLTER2_OPENMP)
   find_package(OpenMP)
