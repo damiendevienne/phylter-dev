@@ -36,6 +36,8 @@ jobs:
         run: |
           cmake -S . -B build -A x64 \
             -DCMAKE_PREFIX_PATH="$CONDA_PREFIX;$CONDA_PREFIX/Library" \
+            -DPHYLTER2_BLAS_LIBRARY="$CONDA_PREFIX/Library/lib/blas.lib" \
+            -DPHYLTER2_LAPACK_LIBRARY="$CONDA_PREFIX/Library/lib/lapack.lib" \
             -DPHYLTER2_OPENMP=OFF
       - run: cmake --build build --config Release --parallel 2
       - run: ctest --test-dir build -C Release --output-on-failure

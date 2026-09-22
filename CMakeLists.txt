@@ -6,8 +6,16 @@ option(PHYLTER2_BUILD_TESTS "Build the C++ test suite" ON)
 option(PHYLTER2_OPENMP "Enable controlled parallel RV computation" ON)
 option(PHYLTER2_BUNDLE_RUNTIME "Bundle Linux numerical and compiler runtime libraries" OFF)
 
+set(PHYLTER2_BLAS_LIBRARY "" CACHE FILEPATH "Explicit BLAS library (for toolchains where FindBLAS fails)")
+set(PHYLTER2_LAPACK_LIBRARY "" CACHE FILEPATH "Explicit LAPACK library (for toolchains where FindLAPACK fails)")
 set(PHYLTER2_NUMERICAL_LIBRARIES)
-if(WIN32 AND DEFINED ENV{CONDA_PREFIX})
+if(PHYLTER2_BLAS_LIBRARY OR PHYLTER2_LAPACK_LIBRARY)
+  if(NOT EXISTS "${PHYLTER2_BLAS_LIBRARY}" OR NOT EXISTS "${PHYLTER2_LAPACK_LIBRARY}")
+    message(FATAL_ERROR "Both PHYLTER2_BLAS_LIBRARY and PHYLTER2_LAPACK_LIBRARY must name existing files")
+  endif()
+  list(APPEND PHYLTER2_NUMERICAL_LIBRARIES
+    "${PHYLTER2_LAPACK_LIBRARY}" "${PHYLTER2_BLAS_LIBRARY}")
+elseif(WIN32 AND DEFINED ENV{CONDA_PREFIX})
   # Conda-forge puts its MSVC import libraries below Library/lib. CMake's
   # FindBLAS does not reliably search that layout on Windows, even when the
   # environment prefix is present in CMAKE_PREFIX_PATH.
