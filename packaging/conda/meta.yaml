@@ -1,6 +1,6 @@
 {% set version = "0.1.0" %}
 package:
-  name: phylter2
+  name: phylter
   version: {{ version }}
 source:
   path: {{ environ.get("PHYLTER2_SOURCE_DIR", "../..") }}

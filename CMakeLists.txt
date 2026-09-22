@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(phylter2 VERSION 0.1.0 LANGUAGES CXX)
+project(phylter VERSION 0.1.0 LANGUAGES CXX)
 
 option(PHYLTER2_BUILD_TESTS "Build the C++ test suite" ON)
 option(PHYLTER2_OPENMP "Enable controlled parallel RV computation" ON)
-option(PHYLTER2_BUNDLE_RUNTIME "Bundle Linux numerical and compiler runtime libraries" OFF)
+option(PHYLTER2_BUNDLE_RUNTIME "Bundle numerical and compiler runtime libraries" OFF)
 
 find_package(Threads REQUIRED)
 
@@ -98,22 +98,39 @@ install(FILES tests/fixtures/carnivora.nwk tests/fixtures/carnivora.outliers.tsv
   tests/fixtures/carnivora.scores.tsv tests/fixtures/PROVENANCE.txt
   DESTINATION ${CMAKE_INSTALL_DATADIR}/phylter/examples COMPONENT Runtime)
 if(PHYLTER2_BUNDLE_RUNTIME)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "Runtime bundling is currently validated only on Linux")
+  if(WIN32)
+    install(RUNTIME_DEPENDENCY_SET phylterRuntime
+      DIRECTORIES "$ENV{CONDA_PREFIX}/Library/bin"
+      PRE_EXCLUDE_REGEXES "^api-ms-" "^ext-ms-"
+      POST_EXCLUDE_REGEXES ".*[Ww]indows[/\\\\][Ss]ystem32.*"
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Runtime)
+  elseif(APPLE)
+    set_target_properties(phylter PROPERTIES INSTALL_RPATH "@loader_path/../${CMAKE_INSTALL_LIBDIR}")
+    install(RUNTIME_DEPENDENCY_SET phylterRuntime
+      DIRECTORIES "$ENV{CONDA_PREFIX}/lib"
+      POST_EXCLUDE_REGEXES "^/System/Library/" "^/usr/lib/"
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime)
+  else()
+    set_target_properties(phylter PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+    # RPATH is inherited by LAPACK's transitive dependencies (RUNPATH is not).
+    target_link_options(phylter PRIVATE "-Wl,--disable-new-dtags")
+    install(RUNTIME_DEPENDENCY_SET phylterRuntime
+      DIRECTORIES "$ENV{CONDA_PREFIX}/lib"
+      PRE_EXCLUDE_REGEXES "^ld-linux" "^libc\\.so" "^libm\\.so" "^libmvec\\.so" "^libdl\\.so"
+                         "^libpthread\\.so" "^librt\\.so"
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime)
   endif()
-  set_target_properties(phylter PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
-  # RPATH is inherited by LAPACK's transitive dependencies (RUNPATH is not).
-  target_link_options(phylter PRIVATE "-Wl,--disable-new-dtags")
-  install(RUNTIME_DEPENDENCY_SET phylterRuntime
-    PRE_EXCLUDE_REGEXES "^ld-linux" "^libc\\.so" "^libm\\.so" "^libmvec\\.so" "^libdl\\.so"
-                       "^libpthread\\.so" "^librt\\.so"
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT Runtime)
 endif()
 
-set(CPACK_PACKAGE_NAME phylter2)
+set(CPACK_PACKAGE_NAME phylter)
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_PACKAGE_FILE_NAME "phylter2-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
-set(CPACK_GENERATOR TGZ)
+set(CPACK_PACKAGE_FILE_NAME "phylter-${PROJECT_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+if(WIN32)
+  set(CPACK_GENERATOR ZIP)
+else()
+  set(CPACK_GENERATOR TGZ)
+endif()
 set(CPACK_COMPONENTS_ALL Runtime)
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
