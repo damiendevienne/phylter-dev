@@ -180,7 +180,7 @@ Run `phylter --help` for the complete list.
 | `--threads N` | Use `N` workers for RV computations (default: 1) |
 | `--distance patristic\|nodal` | Select the distance calculated from trees |
 | `--norm median\|mean\|none` | Select distance normalization |
-| `--support-cutoff N` | Apply R-compatible node-support filtering |
+| `--support-cutoff N` | Collapse internal branches below this node-support threshold |
 | `--initial-only` | Calculate only the initial state |
 | `--force` | Overwrite existing result files |
 | `--diagnostics DIR` | Save each state's matrices; uses substantial disk space |

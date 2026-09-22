@@ -24,7 +24,12 @@ jobs:
           activate-environment: phylter-build
           channels: conda-forge
           conda-remove-defaults: true
-      - run: conda install -y cxx-compiler cmake ninja libblas liblapack
+      - name: Install build dependencies (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: conda install -y cxx-compiler cmake ninja libblas liblapack
+      - name: Install build dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: conda install -y cmake "libblas=*=*netlib" "liblapack=*=*netlib"
       - name: Configure (Linux/macOS)
         if: runner.os != 'Windows'
         run: |

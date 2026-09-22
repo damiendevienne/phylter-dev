@@ -31,7 +31,7 @@ Options:
   --distance patristic|nodal  Tree distances (default: patristic)
   --norm median|mean|none     Distance normalization (default: median)
   --norm-cutoff NUMBER       Discard uninformative genes (default: 0.001)
-  --support-cutoff NUMBER    R-compatible node support filtering (default: 0)
+  --support-cutoff NUMBER    Collapse internal branches below this support (default: 0)
   --k NUMBER                 Cell outlier threshold (default: 3)
   --k2 NUMBER                Whole gene threshold (default: same as k)
   --stop NUMBER              Minimum quality gain (default: 0.00001)
