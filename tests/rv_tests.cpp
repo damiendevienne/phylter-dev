@@ -48,7 +48,7 @@ int main() {
     const auto iterative = leading_eigenpair(matrices.size(),[&](const auto& x){return op(x);});
     const auto exact = symmetric_eigen(dense);
     near(iterative.value,exact.values.front(),1e-11,"RV eigenvalue mismatch");
-    require(iterative.relative_residual<=2e-14,"RV residual exceeds tolerance");
+    require(iterative.relative_residual<=1e-12,"RV residual exceeds tolerance");
     const auto image = multiply(dense,iterative.vector);
     for (std::size_t i = 0; i < image.size(); ++i)
       near(image[i],iterative.value*iterative.vector[i],1e-11,"dense RV residual check failed");
@@ -72,7 +72,7 @@ int main() {
     for (std::size_t i = 0; i < 100; ++i) diagonal(i,i) = .01*static_cast<double>(i);
     diagonal(99,99)=1.1;
     const auto restarted = leading_eigenpair(100,[&](const auto& x){return multiply(diagonal,x);},
-                                            {.tolerance=2e-14,.max_basis=12,.max_products=2048});
+                                            {.tolerance=1e-12,.max_basis=12,.max_products=2048});
     near(restarted.value,1.1,1e-12,"restarted solve failed");
     require(restarted.products>12,"restart test did not exercise restarts");
     diagonal(98,98)=1.1-1e-7;
@@ -84,7 +84,7 @@ int main() {
     near(tied.value,1.1,1e-12,"tied leading eigenspace failed");
 
     rejects([&]{(void)leading_eigenpair(100,[&](const auto& x){return multiply(diagonal,x);},
-                                      {.tolerance=2e-14,.max_basis=12,.max_products=1});});
+                                      {.tolerance=1e-12,.max_basis=12,.max_products=1});});
     rejects([]{(void)leading_eigenpair(2,[](const auto&){return std::vector<double>{0};});});
     rejects([]{(void)leading_eigenpair(2,[](const auto&){return std::vector<double>{0,std::numeric_limits<double>::quiet_NaN()};});});
     rejects([]{std::vector<Matrix> zero{Matrix(3,3)}; (void)RvOperator(zero);});

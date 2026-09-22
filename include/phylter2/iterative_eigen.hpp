@@ -5,7 +5,10 @@
 namespace phylter2 {
 using SymmetricOperator = std::function<std::vector<double>(const std::vector<double>&)>;
 struct KrylovOptions {
-  double tolerance{2e-14};
+  // A 1e-12 residual is stable across LAPACK implementations. Requiring a
+  // value near machine precision can make an otherwise converged solve fail
+  // on platforms with different rounding behavior (notably Apple Accelerate).
+  double tolerance{1e-12};
   std::size_t max_basis{48};
   std::size_t max_products{2048};
 };
